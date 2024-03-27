@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
+using ProyectoFakeBook.Models;
 
 namespace ProyectoFakeBook.Controllers
 {
@@ -8,43 +9,66 @@ namespace ProyectoFakeBook.Controllers
     [Route("[controller]")]
     public class FakeBookController : Controller
     {
-        static Dictionary<string, string> usuarios = new Dictionary<string, string>();
+        private FakeBookDBContext BaseDeDatos;
+        public FakeBookController(FakeBookDBContext _BaseDeDatos) {
+            this.BaseDeDatos = _BaseDeDatos;
+        }
+
 
         [HttpPost("cadastro")]
-        public IActionResult CadastrarUsuario([FromBody] UsuarioDto usuarioDto)
+        public IActionResult CadastrarUsuario([FromBody] Usuario usuario)
         {
-            string usuario = usuarioDto.Usuario;
-            string senha = usuarioDto.Senha;
             var resposta = new RespostaCadastro();
-
-                if (usuarios.ContainsKey(usuario))
-                {
-                    resposta._respostacadastro = false;
-                        return Ok(resposta);
-                }
-
-                usuarios.Add(usuario, senha);
-                    resposta._respostacadastro = true;
-                        return Ok(resposta);
-        }
-        [HttpPost("Iniciar")]
-        public IActionResult IniciarUsuario([FromBody] UsuarioDto usuarioDto)
-        {
-            string usuario = usuarioDto.Usuario;
-            string senha = usuarioDto.Senha;
-            var resposta = new RespostaInicio();
-
-            if (usuarios.TryGetValue(usuario, out string storedPassword) && senha == storedPassword)
+            var UsuarioExistente = BaseDeDatos.Usuarios.Where(p => p.Usuario1 == usuario.Usuario1).ToList();
+            if (UsuarioExistente.Count() > 0)
             {
-                resposta._respostainicio = true;
-                return Ok(resposta);
+                resposta._respostacadastro = false;
             }
             else
             {
+                resposta._respostacadastro = true;
+                BaseDeDatos.Add(usuario);
+                BaseDeDatos.SaveChanges();
+            }
+            return Ok(resposta);
+        }
+            [HttpPost("Iniciar")]
+        public IActionResult IniciarUsuario([FromBody] Usuario usuario)
+        {
+         
+            var resposta = new RespostaInicio();
+
+            var ConferirUsuario = BaseDeDatos.Usuarios.FirstOrDefault(p => p.Usuario1 == usuario.Usuario1 && p.Senha == usuario.Senha);
+
+
+                if (ConferirUsuario != null)
+            {
+                resposta._respostainicio = true;
+            }
+                else {
                 resposta._respostainicio = false;
+            }
                 return Ok(resposta);
+        }
+        [HttpGet("usuarios")]
+        public IActionResult ObterBase()
+        {
+            var usuarios = BaseDeDatos.Usuarios.ToList();
+            return Ok(usuarios);
+        }
+        [HttpPost("eliminar")]
+        public IActionResult EliminarUsuario([FromBody] Usuario usuario)
+        {
+            var usuarioAEliminar = BaseDeDatos.Usuarios.FirstOrDefault(u => u.Usuario1 == usuario.Usuario1);
+            if (usuarioAEliminar == null)
+            {
+                return NotFound(); 
             }
 
+            BaseDeDatos.Usuarios.Remove(usuarioAEliminar);
+            BaseDeDatos.SaveChanges();
+
+            return Ok();
         }
 
 
@@ -62,6 +86,8 @@ namespace ProyectoFakeBook.Controllers
         public string Usuario { get; set; }
         public string Senha { get; set; }
     }
+    
+
 
 
 
